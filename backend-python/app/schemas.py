@@ -7,9 +7,16 @@ from datetime import datetime
 class UserBase(BaseModel):
     username: str
     email: str
-    role: Optional[str] = "admin"
+    role: Optional[str] = "customer" # 'customer', 'seller', 'admin'
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    avatar_url: Optional[str] = None
 
-class UserCreate(UserBase):
+class UserRegister(UserBase):
+    password: str
+
+class UserLogin(BaseModel):
+    username_or_email: str
     password: str
 
 class UserResponse(UserBase):
@@ -18,6 +25,10 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
+
+class UserLoginResponse(BaseModel):
+    token: str
+    user: UserResponse
 
 
 # --- Car Schemas ---
@@ -30,7 +41,10 @@ class CarBase(BaseModel):
     body_type: Optional[str] = Field(default="Sedan", example="Sedan")
     image_url: Optional[str] = Field(default=None, example="https://images.unsplash.com/photo-1552519507-da3b142c6e3d")
     status: str = Field(default="Có sẵn", example="Có sẵn")
-    description: Optional[str] = Field(default=None, example="Mẫu sedan hạng D cao cấp, nội thất sang trọng.")
+    description: Optional[str] = Field(default=None, example="Mẫu sedan hạng D cao cấp, bảo dưỡng chính hãng.")
+    seller_id: Optional[int] = Field(default=None, example=1)
+    contact_phone: Optional[str] = Field(default=None, example="0912345678")
+    contact_name: Optional[str] = Field(default=None, example="Đại Lý Tuấn Anh")
 
 class CarCreate(CarBase):
     pass
@@ -45,9 +59,43 @@ class CarUpdate(BaseModel):
     image_url: Optional[str] = None
     status: Optional[str] = None
     description: Optional[str] = None
+    seller_id: Optional[int] = None
+    contact_phone: Optional[str] = None
+    contact_name: Optional[str] = None
 
 class CarResponse(CarBase):
     id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# --- Message Schemas ---
+class MessageCreate(BaseModel):
+    car_id: int
+    sender_id: Optional[int] = None
+    sender_name: str
+    sender_phone: Optional[str] = None
+    sender_email: Optional[str] = None
+    content: str
+    seller_id: Optional[int] = None
+
+class MessageReply(BaseModel):
+    reply: str
+
+class MessageResponse(BaseModel):
+    id: int
+    car_id: int
+    car_name: Optional[str] = None
+    sender_id: Optional[int] = None
+    sender_name: str
+    sender_phone: Optional[str] = None
+    sender_email: Optional[str] = None
+    content: str
+    seller_id: Optional[int] = None
+    is_read: int = 0
+    reply: Optional[str] = None
     created_at: datetime
 
     class Config:

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Input, Select, Button, Tag, Typography, Spin, Empty, Space, Badge, Checkbox, Tooltip, FloatButton, message } from 'antd';
+import { Row, Col, Card, Input, Select, Button, Tag, Typography, Spin, Empty, Space, Badge, Checkbox, Tooltip, FloatButton, message, Switch } from 'antd';
 import { 
   SearchOutlined, 
   FilterOutlined, 
@@ -10,18 +10,24 @@ import {
   SortAscendingOutlined, 
   ThunderboltOutlined,
   CloseOutlined,
-  CheckOutlined
+  CheckOutlined,
+  PrinterOutlined,
+  MessageOutlined,
+  UserOutlined,
+  PhoneOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 import TestDriveModal from './TestDriveModal';
 import CarCompareModal from './CarCompareModal';
 import OnRoadCalculatorModal from './OnRoadCalculatorModal';
 import UsedCarValuationModal from './UsedCarValuationModal';
+import PrintCarModal from './PrintCarModal';
+import SendMessageModal from './SendMessageModal';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 
-const CarList = () => {
+const CarList = ({ currentUser, refreshTrigger }) => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,6 +38,7 @@ const CarList = () => {
   const [selectedBody, setSelectedBody] = useState(null);
   const [priceRange, setPriceRange] = useState(null); // 'under1b', '1b-2b', '2b-5b', 'above5b'
   const [sortBy, setSortBy] = useState('newest');
+  const [onlyMyCars, setOnlyMyCars] = useState(false);
 
   // Modals & Tools States
   const [selectedCarForDrive, setSelectedCarForDrive] = useState(null);
@@ -41,6 +48,14 @@ const CarList = () => {
   const [onRoadModalVisible, setOnRoadModalVisible] = useState(false);
 
   const [valuationModalVisible, setValuationModalVisible] = useState(false);
+
+  // Print Car Modal State
+  const [selectedCarForPrint, setSelectedCarForPrint] = useState(null);
+  const [printModalVisible, setPrintModalVisible] = useState(false);
+
+  // Message Seller Modal State
+  const [selectedCarForMessage, setSelectedCarForMessage] = useState(null);
+  const [messageModalVisible, setMessageModalVisible] = useState(false);
 
   // Compare List State (max 3 cars)
   const [compareCars, setCompareCars] = useState([]);
@@ -68,6 +83,11 @@ const CarList = () => {
         params.min_price = 5000000000;
       }
 
+      // Filter only current seller's cars if requested
+      if (onlyMyCars && currentUser?.id) {
+        params.seller_id = currentUser.id;
+      }
+
       // Sorting
       if (sortBy) params.sort_by = sortBy;
 
@@ -83,7 +103,7 @@ const CarList = () => {
 
   useEffect(() => {
     fetchCars();
-  }, [search, selectedBrand, selectedFuel, selectedBody, priceRange, sortBy]);
+  }, [search, selectedBrand, selectedFuel, selectedBody, priceRange, sortBy, onlyMyCars, refreshTrigger]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -105,6 +125,20 @@ const CarList = () => {
     }
   };
 
+  // Handle open print modal
+  const handleOpenPrint = (car) => {
+    setSelectedCarForPrint(car);
+    setPrintModalVisible(true);
+  };
+
+  // Handle open send message modal
+  const handleOpenMessage = (car) => {
+    setSelectedCarForMessage(car);
+    setMessageModalVisible(true);
+  };
+
+  const isSeller = currentUser?.role === 'seller' || currentUser?.role === 'admin';
+
   return (
     <div>
       {/* Hero Banner */}
@@ -112,105 +146,76 @@ const CarList = () => {
         <Row justify="space-between" align="middle" style={{ maxWidth: 1100, margin: '0 auto' }}>
           <Col xs={24} md={15}>
             <Title level={2} style={{ color: '#fff', margin: 0, fontWeight: 700 }}>
-              Tìm Kiếm & Trải Nghiệm Mẫu Xe Ô Tô Ước Mơ
+              Tìm Kiếm, Đăng Bán & Trải Nghiệm Mẫu Xe Ước Mơ
             </Title>
             <Paragraph style={{ color: '#e0f2fe', fontSize: '1rem', marginTop: 8, marginBottom: 0 }}>
-              TuanAnh Auto tích hợp công cụ Tìm kiếm thông minh, So sánh thông số xe, Tính chi phí lăn bánh & Định giá xe cũ trợ giá đổi mới.
+              TuanAnh Auto tích hợp: Đăng bài bán xe kèm <strong>Mô tả chi tiết</strong>, In bài đăng xuất phiếu, Nhắn tin trực tiếp người bán, Tính chi phí lăn bánh & Lái thử xe.
             </Paragraph>
           </Col>
-          <Col xs={24} md={9} style={{ marginTop: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+
+          <Col xs={24} md={8} style={{ textAlign: 'right', marginTop: 16 }}>
+            <Space wrap size="middle">
               <Button 
-                type="primary" 
-                size="large" 
+                size="large"
                 icon={<DollarOutlined />}
-                style={{ background: '#10b981', borderColor: '#10b981', color: '#fff', fontWeight: 600, boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)' }}
+                style={{ 
+                  borderRadius: 8, 
+                  fontWeight: 600, 
+                  background: 'rgba(255,255,255,0.15)', 
+                  color: '#fff', 
+                  borderColor: 'rgba(255,255,255,0.4)',
+                  backdropFilter: 'blur(5px)'
+                }}
                 onClick={() => setValuationModalVisible(true)}
               >
-                Định Giá Xe Cũ / Thu Cũ Đổi Mới
+                Định Giá Xe Cũ
               </Button>
-            </div>
+            </Space>
           </Col>
         </Row>
       </div>
 
-      {/* Brand Showcase Section - Phân loại theo Hãng Xe */}
-      <div style={{ marginBottom: 20 }}>
-        <Text strong style={{ fontSize: '0.9rem', color: '#475569', display: 'block', marginBottom: 10 }}>
-          🏷️ KHÁM PHÁ THEO HÃNG XE (BRANDS):
-        </Text>
-        <Row gutter={[10, 10]}>
-          {[
-            { name: 'Tất Cả Hãng', value: null, icon: '🚘' },
-            { name: 'Mercedes-Benz', value: 'Mercedes-Benz', icon: '⭐' },
-            { name: 'BMW', value: 'BMW', icon: '🔵' },
-            { name: 'Porsche', value: 'Porsche', icon: '🏎️' },
-            { name: 'Toyota', value: 'Toyota', icon: '🔴' },
-            { name: 'Ford', value: 'Ford', icon: '🛻' },
-          ].map((b) => {
-            const isActive = selectedBrand === b.value;
-            const count = b.value ? cars.filter(c => c.brand === b.value).length : cars.length;
-
-            return (
-              <Col xs={12} sm={8} md={4} key={b.name}>
-                <Card
-                  hoverable
+      {/* Body Types Quick Category Buttons */}
+      <Card style={{ marginBottom: 16, borderRadius: 12, border: '1px solid #e2e8f0' }} bodyStyle={{ padding: '12px 16px' }}>
+        <Space wrap size="middle" align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Space wrap size="small">
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b', marginRight: 4 }}>DÒNG XE:</span>
+            {[
+              { label: 'Tất Cả', value: null },
+              { label: 'Sedan Sang Trọng', value: 'Sedan' },
+              { label: 'SUV Gầm Cao', value: 'SUV' },
+              { label: 'Xe Thể Thao', value: 'Thể thao' },
+              { label: 'Bán Tải Đa Dụng', value: 'Bán tải' },
+            ].map((cat, idx) => {
+              const isActive = selectedBody === cat.value;
+              return (
+                <Button
+                  key={idx}
                   size="small"
-                  onClick={() => setSelectedBrand(b.value)}
+                  type={isActive ? 'primary' : 'default'}
                   style={{
-                    textAlign: 'center',
-                    borderRadius: 10,
-                    cursor: 'pointer',
-                    borderColor: isActive ? '#0284c7' : '#e2e8f0',
-                    background: isActive ? '#f0f9ff' : '#ffffff',
-                    boxShadow: isActive ? '0 4px 12px rgba(2, 132, 199, 0.15)' : 'none',
-                    transition: 'all 0.2s ease'
+                    borderRadius: 20,
+                    fontWeight: 600,
+                    fontSize: '0.82rem',
+                    background: isActive ? '#0284c7' : '#ffffff',
+                    borderColor: isActive ? '#0284c7' : '#cbd5e1',
+                    color: isActive ? '#ffffff' : '#475569'
                   }}
+                  onClick={() => setSelectedBody(cat.value)}
                 >
-                  <Text style={{ fontSize: '1rem', marginRight: 6 }}>{b.icon}</Text>
-                  <Text strong style={{ color: isActive ? '#0284c7' : '#1e293b', fontSize: '0.85rem' }}>
-                    {b.name}
-                  </Text>
-                </Card>
-              </Col>
-            );
-          })}
-        </Row>
-      </div>
+                  {cat.label}
+                </Button>
+              );
+            })}
+          </Space>
 
-      {/* Vehicle Body Type Segmented Tabs - Phân loại theo Dòng Xe */}
-      <Card style={{ marginBottom: 20, borderRadius: 12, background: '#f8fafc', borderColor: '#e2e8f0' }} bodyStyle={{ padding: '12px 16px' }}>
-        <Space wrap align="center" size="middle">
-          <Text strong style={{ fontSize: '0.88rem', color: '#334155' }}>
-            🚙 PHÂN KHÚC DÒNG XE:
-          </Text>
-          {[
-            { label: 'Tất Cả Dòng Xe', value: null },
-            { label: 'Sedan Sang Trọng', value: 'Sedan' },
-            { label: 'SUV / Crossover', value: 'SUV' },
-            { label: 'Xe Thể Thao', value: 'Thể thao' },
-            { label: 'Xe Bán Tải', value: 'Bán tải' },
-          ].map((cat) => {
-            const isActive = selectedBody === cat.value;
-            return (
-              <Button
-                key={cat.label}
-                type={isActive ? 'primary' : 'default'}
-                size="middle"
-                style={{
-                  borderRadius: 20,
-                  fontWeight: 600,
-                  fontSize: '0.82rem',
-                  background: isActive ? '#0284c7' : '#ffffff',
-                  borderColor: isActive ? '#0284c7' : '#cbd5e1',
-                  color: isActive ? '#ffffff' : '#475569'
-                }}
-                onClick={() => setSelectedBody(cat.value)}
-              >
-                {cat.label}
-              </Button>
-            );
-          })}
+          {/* Seller Filter Toggle */}
+          {isSeller && (
+            <Space align="center" size="small" style={{ background: '#faf5ff', padding: '4px 12px', borderRadius: 20, border: '1px solid #e9d5ff' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#7e22ce' }}>Chỉ xem xe tôi đăng:</span>
+              <Switch checked={onlyMyCars} onChange={(checked) => setOnlyMyCars(checked)} />
+            </Space>
+          )}
         </Space>
       </Card>
 
@@ -221,7 +226,7 @@ const CarList = () => {
             <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>TÌM KIẾM TỪ KHÓA</Text>
             <Input
               prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-              placeholder="Tên xe, phiên bản..."
+              placeholder="Tên xe, phiên bản, mô tả..."
               allowClear
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -242,8 +247,12 @@ const CarList = () => {
               <Option value="Mercedes-Benz">Mercedes-Benz</Option>
               <Option value="BMW">BMW</Option>
               <Option value="Porsche">Porsche</Option>
+              <Option value="Audi">Audi</Option>
               <Option value="Toyota">Toyota</Option>
               <Option value="Ford">Ford</Option>
+              <Option value="Honda">Honda</Option>
+              <Option value="Hyundai">Hyundai</Option>
+              <Option value="Kia">Kia</Option>
             </Select>
           </Col>
 
@@ -282,7 +291,7 @@ const CarList = () => {
           </Col>
 
           <Col xs={12} sm={12} md={4}>
-            <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>SẮP XẾP BẢNG MẪU</Text>
+            <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block', marginBottom: 4 }}>SẮP XẾP</Text>
             <Select
               value={sortBy}
               onChange={(val) => setSortBy(val)}
@@ -326,7 +335,10 @@ const CarList = () => {
           <Spin size="large" tip="Đang lọc danh sách ô tô..." />
         </div>
       ) : cars.length === 0 ? (
-        <Empty description="Không tìm thấy mẫu xe ô tô nào theo bộ lọc của bạn." style={{ padding: '40px 0' }} />
+        <Empty 
+          description={onlyMyCars ? "Bạn chưa đăng bài bán xe nào. Hãy bấm 'Đăng Tin Bán Xe' ở trên!" : "Không tìm thấy mẫu xe ô tô nào theo bộ lọc của bạn."} 
+          style={{ padding: '40px 0' }} 
+        />
       ) : (
         <Row gutter={[24, 24]}>
           {cars.map((car) => {
@@ -370,50 +382,118 @@ const CarList = () => {
                     </div>
                   }
                 >
-                  <div style={{ marginBottom: 8 }}>
-                    <Tag color="volcano">{car.brand}</Tag>
-                    <Tag color="geekblue">{car.body_type || 'Sedan'}</Tag>
-                    <Tag color="purple">Đời {car.year}</Tag>
+                  <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Space size="xs">
+                      <Tag color="volcano">{car.brand}</Tag>
+                      <Tag color="geekblue">{car.body_type || 'Sedan'}</Tag>
+                      <Tag color="purple">Đời {car.year}</Tag>
+                    </Space>
+
+                    <Tag color="success" style={{ margin: 0 }}>{car.status || 'Có sẵn'}</Tag>
                   </div>
                   
-                  <Title level={4} style={{ margin: '0 0 8px 0', fontSize: '1.15rem' }} ellipsis={{ rows: 1 }}>
+                  <Title level={4} style={{ margin: '0 0 6px 0', fontSize: '1.15rem' }} ellipsis={{ rows: 1 }}>
                     {car.name}
                   </Title>
                   
-                  <Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ height: 40, fontSize: '0.88rem' }}>
-                    {car.description || "Xe sang chính hãng, trang bị đầy đủ tính năng an toàn hàng đầu."}
+                  {/* Car Description (Phần Mô Tả Xe) */}
+                  <Paragraph 
+                    type="secondary" 
+                    ellipsis={{ rows: 2, tooltip: car.description }} 
+                    style={{ height: 42, fontSize: '0.85rem', marginBottom: 10, lineHeight: 1.5 }}
+                  >
+                    {car.description || "Xe sang chính hãng, trang bị đầy đủ tính năng an toàn hàng đầu, bảo dưỡng chính hãng."}
                   </Paragraph>
+
+                  {/* Seller & Hotline info */}
+                  <div style={{ 
+                    fontSize: '0.78rem', 
+                    color: '#64748b', 
+                    background: '#f8fafc', 
+                    padding: '4px 8px', 
+                    borderRadius: 6, 
+                    marginBottom: 10,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span>
+                      <UserOutlined style={{ marginRight: 4, color: '#0284c7' }} />
+                      {car.contact_name || "Tuấn Anh Auto Showroom"}
+                    </span>
+                    {car.contact_phone && (
+                      <span style={{ color: '#0284c7', fontWeight: 600 }}>
+                        <PhoneOutlined style={{ marginRight: 2 }} />
+                        {car.contact_phone}
+                      </span>
+                    )}
+                  </div>
                   
-                  <div style={{ marginBottom: 12 }}>
+                  {/* Listed Price */}
+                  <div style={{ marginBottom: 14 }}>
                     <Text type="secondary" style={{ fontSize: '0.75rem', display: 'block' }}>Giá niêm yết</Text>
                     <Text className="price-tag">{formatPrice(car.price)}</Text>
                   </div>
 
-                  {/* Functional Action Buttons */}
-                  <Row gutter={8}>
-                    <Col span={12}>
-                      <Button 
-                        block 
-                        type="default" 
-                        icon={<CalculatorOutlined style={{ color: '#0284c7' }} />}
-                        onClick={() => { setSelectedCarForOnRoad(car); setOnRoadModalVisible(true); }}
-                        style={{ fontSize: '0.82rem', borderRadius: 6 }}
-                      >
-                        Giá Lăn Bánh
-                      </Button>
-                    </Col>
-                    <Col span={12}>
-                      <Button 
-                        block 
-                        type="primary" 
-                        icon={<CarOutlined />} 
-                        onClick={() => { setSelectedCarForDrive(car); setDriveModalVisible(true); }}
-                        style={{ fontSize: '0.82rem', borderRadius: 6, background: '#0284c7' }}
-                      >
-                        Lái Thử Xe
-                      </Button>
-                    </Col>
-                  </Row>
+                  {/* Functional Action Buttons: 2 rows */}
+                  <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                    {/* Row 1: Giá lăn bánh & Lái thử */}
+                    <Row gutter={8}>
+                      <Col span={12}>
+                        <Button 
+                          block 
+                          type="default" 
+                          icon={<CalculatorOutlined style={{ color: '#0284c7' }} />}
+                          onClick={() => { setSelectedCarForOnRoad(car); setOnRoadModalVisible(true); }}
+                          style={{ fontSize: '0.8rem', borderRadius: 6 }}
+                        >
+                          Lăn Bánh
+                        </Button>
+                      </Col>
+                      <Col span={12}>
+                        <Button 
+                          block 
+                          type="primary" 
+                          icon={<CarOutlined />} 
+                          onClick={() => { setSelectedCarForDrive(car); setDriveModalVisible(true); }}
+                          style={{ fontSize: '0.8rem', borderRadius: 6, background: '#0284c7', borderColor: '#0284c7' }}
+                        >
+                          Lái Thử
+                        </Button>
+                      </Col>
+                    </Row>
+
+                    {/* Row 2: In bài đăng & Gửi tin nhắn đến người bán */}
+                    <Row gutter={8}>
+                      <Col span={12}>
+                        <Button 
+                          block 
+                          icon={<PrinterOutlined style={{ color: '#475569' }} />}
+                          onClick={() => handleOpenPrint(car)}
+                          style={{ fontSize: '0.8rem', borderRadius: 6, borderColor: '#cbd5e1' }}
+                        >
+                          In Bài Đăng
+                        </Button>
+                      </Col>
+                      <Col span={12}>
+                        <Button 
+                          block 
+                          icon={<MessageOutlined style={{ color: '#10b981' }} />}
+                          onClick={() => handleOpenMessage(car)}
+                          style={{ 
+                            fontSize: '0.8rem', 
+                            borderRadius: 6, 
+                            borderColor: '#10b981', 
+                            color: '#059669',
+                            background: '#ecfdf5',
+                            fontWeight: 600
+                          }}
+                        >
+                          Nhắn Người Bán
+                        </Button>
+                      </Col>
+                    </Row>
+                  </Space>
                 </Card>
               </Col>
             );
@@ -444,6 +524,20 @@ const CarList = () => {
       <UsedCarValuationModal
         visible={valuationModalVisible}
         onClose={() => setValuationModalVisible(false)}
+      />
+
+      {/* New Required Modals */}
+      <PrintCarModal
+        visible={printModalVisible}
+        onClose={() => setPrintModalVisible(false)}
+        car={selectedCarForPrint}
+      />
+
+      <SendMessageModal
+        visible={messageModalVisible}
+        onClose={() => setMessageModalVisible(false)}
+        car={selectedCarForMessage}
+        currentUser={currentUser}
       />
     </div>
   );
