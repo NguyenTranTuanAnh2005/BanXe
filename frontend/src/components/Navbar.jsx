@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Typography, Space, Tag, Button, Row, Col, Badge, Tooltip } from 'antd';
+import { Layout, Typography, Space, Tag, Button, Dropdown, Badge, Tooltip, Avatar } from 'antd';
 import { 
   CarOutlined, 
   PhoneOutlined, 
@@ -7,15 +7,75 @@ import {
   EnvironmentOutlined,
   ClockCircleOutlined,
   ThunderboltOutlined,
-  ScheduleOutlined,
-  CustomerServiceOutlined,
-  RobotOutlined
+  PlusCircleOutlined,
+  MessageOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  RobotOutlined,
+  ShopOutlined,
+  IdcardOutlined,
+  DownOutlined
 } from '@ant-design/icons';
 
 const { Header } = Layout;
 const { Title, Text } = Typography;
 
-const Navbar = ({ activeTab, onTabChange, onOpenChat }) => {
+const Navbar = ({ 
+  activeTab, 
+  onTabChange, 
+  onOpenChat,
+  currentUser,
+  onOpenAuth,
+  onOpenPostCar,
+  onOpenMessages,
+  unreadCount = 0,
+  onLogout
+}) => {
+  // User menu items for dropdown
+  const userMenuItems = [
+    {
+      key: 'profile',
+      label: (
+        <div style={{ padding: '4px 0' }}>
+          <div style={{ fontWeight: 700, color: '#0f172a' }}>{currentUser?.full_name || currentUser?.username}</div>
+          <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{currentUser?.email}</div>
+          <div style={{ marginTop: 4 }}>
+            <Tag color={currentUser?.role === 'seller' ? 'purple' : currentUser?.role === 'admin' ? 'green' : 'cyan'}>
+              {currentUser?.role === 'seller' ? '🚗 Người Bán Xe / Đại Lý' : currentUser?.role === 'admin' ? '🛡️ Quản Trị Viên' : '🛒 Khách Hàng'}
+            </Tag>
+          </div>
+        </div>
+      ),
+      disabled: true,
+    },
+    { type: 'divider' },
+    {
+      key: 'messages',
+      icon: <MessageOutlined />,
+      label: (
+        <span>
+          Hộp Thư Tin Nhắn {unreadCount > 0 && <Badge count={unreadCount} size="small" style={{ marginLeft: 6 }} />}
+        </span>
+      ),
+      onClick: onOpenMessages,
+    },
+    ...(currentUser?.role === 'seller' || currentUser?.role === 'admin' ? [
+      {
+        key: 'post-car',
+        icon: <PlusCircleOutlined style={{ color: '#0284c7' }} />,
+        label: 'Đăng Bài Bán Xe Mới',
+        onClick: onOpenPostCar,
+      }
+    ] : []),
+    { type: 'divider' },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined style={{ color: '#ef4444' }} />,
+      label: <span style={{ color: '#ef4444', fontWeight: 600 }}>Đăng Xuất</span>,
+      onClick: onLogout,
+    },
+  ];
+
   return (
     <div style={{ background: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
       {/* 1. Top Mini Bar */}
@@ -24,7 +84,7 @@ const Navbar = ({ activeTab, onTabChange, onOpenChat }) => {
           <Space size="middle" flexWrap="wrap" split={<span style={{ color: '#334155' }} className="hide-on-mobile">|</span>}>
             <Space align="center" size="xs">
               <EnvironmentOutlined style={{ color: '#38bdf8' }} />
-              <span>Showroom: 88 Nguyễn Văn Cừ, Hà Nội</span>
+              <span>Showroom: 88 Nguyễn Văn Cừ, Long Biên, Hà Nội</span>
             </Space>
             <Space align="center" size="xs" className="hide-on-mobile">
               <ClockCircleOutlined style={{ color: '#38bdf8' }} />
@@ -45,8 +105,8 @@ const Navbar = ({ activeTab, onTabChange, onOpenChat }) => {
       </div>
 
       {/* 2. Main Branding Header */}
-      <Header style={{ background: '#ffffff', height: 'auto', padding: '16px', borderBottom: '1px solid #f1f5f9' }}>
-        <div style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }} className="responsive-header-row">
+      <Header style={{ background: '#ffffff', height: 'auto', padding: '14px 16px', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }} className="responsive-header-row">
           {/* Logo Section */}
           <Space align="center" size="middle" style={{ cursor: 'pointer' }} onClick={() => onTabChange && onTabChange('1')}>
             <div style={{ 
@@ -67,22 +127,43 @@ const Navbar = ({ activeTab, onTabChange, onOpenChat }) => {
                 TuanAnh <span style={{ color: '#0284c7' }}>Auto</span>
               </Title>
               <Text type="secondary" style={{ fontSize: '0.78rem', fontWeight: 500, letterSpacing: '0.2px' }}>
-                Hệ Thống Phân Phối Ô Tô Chính Hãng
+                Hệ Thống Phân Phối & Ký Gửi Ô Tô Toàn Quốc
               </Text>
             </div>
           </Space>
 
-          {/* Quick Badges & Call to Actions */}
+          {/* Quick Actions & Auth Controls */}
           <Space size="middle" align="center" style={{ flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} className="hide-on-mobile">
-              <Tag icon={<SafetyCertificateOutlined />} color="cyan" style={{ padding: '4px 12px', borderRadius: 20, fontSize: '0.8rem', margin: 0 }}>
-                Bảo Hành 5 Năm
-              </Tag>
-              <Tag icon={<ThunderboltOutlined />} color="volcano" style={{ padding: '4px 12px', borderRadius: 20, fontSize: '0.8rem', margin: 0 }}>
-                Ưu Đãi Trả Góp 0%
-              </Tag>
-            </div>
+            {/* Post Car Listing CTA */}
+            <Button
+              type="primary"
+              icon={<PlusCircleOutlined />}
+              onClick={onOpenPostCar}
+              style={{
+                background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                borderColor: '#f97316',
+                fontWeight: 700,
+                borderRadius: 8,
+                boxShadow: '0 4px 12px rgba(249, 115, 22, 0.25)'
+              }}
+            >
+              Đăng Tin Bán Xe
+            </Button>
 
+            {/* Messages Inbox Button */}
+            <Tooltip title="Xem hộp thư tin nhắn trao đổi mua bán xe">
+              <Badge count={unreadCount} size="small" offset={[-2, 2]}>
+                <Button
+                  icon={<MessageOutlined style={{ color: '#0284c7' }} />}
+                  onClick={onOpenMessages}
+                  style={{ borderRadius: 8, fontWeight: 600 }}
+                >
+                  <span className="hide-on-mobile">Tin Nhắn</span>
+                </Button>
+              </Badge>
+            </Tooltip>
+
+            {/* AI Assistant Button */}
             <Tooltip title="Trợ lý AI Gemma 3:1B tư vấn ô tô thông minh (Ollama)">
               <Button 
                 type="default" 
@@ -96,27 +177,59 @@ const Navbar = ({ activeTab, onTabChange, onOpenChat }) => {
                 }}
                 onClick={() => onOpenChat && onOpenChat()}
               >
-                Trợ Lý AI Gemma 3
+                <span className="hide-on-mobile">Trợ Lý AI</span>
               </Button>
             </Tooltip>
 
-            <Tooltip title="Liên hệ tư vấn hoặc đăng ký lái thử trực tiếp">
+            {/* User Account / Auth Section */}
+            {currentUser ? (
+              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" arrow>
+                <Button 
+                  style={{ 
+                    borderRadius: 20, 
+                    padding: '4px 12px', 
+                    height: 'auto',
+                    border: '1px solid #cbd5e1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <Avatar 
+                    size="small" 
+                    icon={<UserOutlined />} 
+                    style={{ 
+                      backgroundColor: currentUser.role === 'seller' ? '#9333ea' : currentUser.role === 'admin' ? '#10b981' : '#0284c7' 
+                    }} 
+                  />
+                  <span style={{ fontWeight: 600, color: '#0f172a', maxWidth: 120 }} className="brand-text-nowrap">
+                    {currentUser.full_name || currentUser.username}
+                  </span>
+                  <Tag 
+                    color={currentUser.role === 'seller' ? 'purple' : currentUser.role === 'admin' ? 'green' : 'cyan'} 
+                    style={{ margin: 0, fontSize: '0.72rem', padding: '0 6px', borderRadius: 8 }}
+                  >
+                    {currentUser.role === 'seller' ? 'Người Bán' : currentUser.role === 'admin' ? 'Admin' : 'Khách Hàng'}
+                  </Tag>
+                  <DownOutlined style={{ fontSize: 10, color: '#94a3b8' }} />
+                </Button>
+              </Dropdown>
+            ) : (
               <Button 
-                type="primary" 
-                size="middle" 
-                icon={<ScheduleOutlined />}
-                style={{ 
-                  background: 'linear-gradient(135deg, #0284c7, #0369a1)', 
-                  borderColor: '#0284c7', 
+                type="primary"
+                icon={<UserOutlined />}
+                onClick={onOpenAuth}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                  borderColor: '#0284c7',
                   borderRadius: 8,
                   fontWeight: 600,
                   boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)'
                 }}
-                onClick={() => onTabChange && onTabChange('1')}
               >
-                Đặt Lịch Khảo Sát
+                Đăng Nhập / Đăng Ký
               </Button>
-            </Tooltip>
+            )}
           </Space>
         </div>
       </Header>

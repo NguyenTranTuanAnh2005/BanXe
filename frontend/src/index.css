@@ -169,3 +169,89 @@ body {
   }
 }
 
+/* Print Media Query Optimization */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  
+  /* Hide non-printable web UI elements */
+  .ant-layout-header,
+  .ant-layout-footer,
+  .top-mini-bar,
+  .hero-banner,
+  .sticky-compare-bar,
+  .ant-tabs-nav,
+  .ant-modal-close,
+  .ant-modal-footer,
+  .no-print,
+  .chatbot-widget-container,
+  .ant-float-btn {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-document-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .ant-modal-wrap,
+  .ant-modal-mask {
+    position: static !important;
+  }
+
+  .ant-modal {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    top: 0 !important;
+  }
+
+  .ant-modal-content {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+}
+
+.print-document {
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+}
+
+.print-document h1, .print-document h2, .print-document h3 {
+  color: #0f172a;
+}
+
+.spec-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.spec-table th, .spec-table td {
+  border: 1px solid #e2e8f0;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.spec-table th {
+  background-color: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+  width: 35%;
+}
+

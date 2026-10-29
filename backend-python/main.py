@@ -3,19 +3,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base, SessionLocal
 from app.crud import seed_initial_data
-from app.routers import cars, test_drives, valuations, chatbot
+from app.routers import cars, test_drives, valuations, chatbot, auth, messages
 
 # Auto create database tables on startup if they don't exist
 Base.metadata.create_all(bind=engine)
 
-# Seed initial car catalog data
+# Seed initial car catalog and demo users data
 with SessionLocal() as session:
     seed_initial_data(session)
 
 app = FastAPI(
     title="TuanAnh Auto API Service",
-    description="Hệ thống Backend FastAPI chính quản lý ô tô, đăng ký lái thử, định giá xe cũ, AI Chatbot (gemma3:1b) và API Admin MySQL",
-    version="1.2.0"
+    description="Hệ thống Backend FastAPI chính quản lý ô tô, tài khoản khách hàng & người bán, đăng bài kèm mô tả, tin nhắn liên hệ, AI Chatbot (gemma3:1b)",
+    version="1.3.0"
 )
 
 app.add_middleware(
@@ -27,7 +27,9 @@ app.add_middleware(
 )
 
 # Include Router Modules
+app.include_router(auth.router)
 app.include_router(cars.router)
+app.include_router(messages.router)
 app.include_router(test_drives.router)
 app.include_router(valuations.router)
 app.include_router(chatbot.router)

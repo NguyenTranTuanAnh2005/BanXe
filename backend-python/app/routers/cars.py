@@ -22,6 +22,7 @@ def read_cars(
     min_year: Optional[int] = Query(None, description="Năm sản xuất từ"),
     max_year: Optional[int] = Query(None, description="Năm sản xuất đến"),
     sort_by: Optional[str] = Query(None, description="Sắp xếp: price_asc, price_desc, year_desc"),
+    seller_id: Optional[int] = Query(None, description="Lọc xe do người bán này đăng"),
     db: Session = Depends(database.get_db)
 ):
     """Lấy danh sách xe ô tô hỗ trợ Tìm kiếm thông minh và Bộ lọc nhiều tiêu chí."""
@@ -37,7 +38,8 @@ def read_cars(
         max_price=max_price,
         min_year=min_year,
         max_year=max_year,
-        sort_by=sort_by
+        sort_by=sort_by,
+        seller_id=seller_id
     )
 
 

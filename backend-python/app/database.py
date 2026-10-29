@@ -49,23 +49,57 @@ def init_engine_and_session():
     return engine, SessionLocal
 
 def auto_migrate_schema(engine):
-    """Ensures new columns like body_type exist in database tables."""
+    """Ensures new columns like body_type, seller fields and user profiles exist in database tables."""
     try:
         with engine.connect() as conn:
             is_sqlite = str(engine.url).startswith("sqlite")
             if is_sqlite:
+                # 1. Migrate cars table
                 result = conn.execute(text("PRAGMA table_info(cars)"))
-                cols = [row[1] for row in result.fetchall()]
-                if cols and "body_type" not in cols:
-                    conn.execute(text("ALTER TABLE cars ADD COLUMN body_type VARCHAR(50) DEFAULT 'Sedan'"))
-                    conn.commit()
+                car_cols = [row[1] for row in result.fetchall()]
+                if car_cols:
+                    if "body_type" not in car_cols:
+                        conn.execute(text("ALTER TABLE cars ADD COLUMN body_type VARCHAR(50) DEFAULT 'Sedan'"))
+                    if "seller_id" not in car_cols:
+                        conn.execute(text("ALTER TABLE cars ADD COLUMN seller_id INTEGER NULL"))
+                    if "contact_phone" not in car_cols:
+                        conn.execute(text("ALTER TABLE cars ADD COLUMN contact_phone VARCHAR(20) NULL"))
+                    if "contact_name" not in car_cols:
+                        conn.execute(text("ALTER TABLE cars ADD COLUMN contact_name VARCHAR(100) NULL"))
+                
+                # 2. Migrate users table
+                result_users = conn.execute(text("PRAGMA table_info(users)"))
+                user_cols = [row[1] for row in result_users.fetchall()]
+                if user_cols:
+                    if "full_name" not in user_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN full_name VARCHAR(100) NULL"))
+                    if "phone" not in user_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(20) NULL"))
+                    if "avatar_url" not in user_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500) NULL"))
+                
+                conn.commit()
             else:
-                result = conn.execute(text("SHOW COLUMNS FROM cars LIKE 'body_type'"))
-                if not result.fetchone():
-                    conn.execute(text("ALTER TABLE cars ADD COLUMN body_type VARCHAR(50) DEFAULT 'Sedan'"))
-                    conn.commit()
+                # MySQL Migration
+                def add_col_if_missing(table, col, col_def):
+                    res = conn.execute(text(f"SHOW COLUMNS FROM {table} LIKE '{col}'"))
+                    if not res.fetchone():
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}"))
+
+                # cars columns
+                add_col_if_missing("cars", "body_type", "VARCHAR(50) DEFAULT 'Sedan'")
+                add_col_if_missing("cars", "seller_id", "INT NULL")
+                add_col_if_missing("cars", "contact_phone", "VARCHAR(20) NULL")
+                add_col_if_missing("cars", "contact_name", "VARCHAR(100) NULL")
+
+                # users columns
+                add_col_if_missing("users", "full_name", "VARCHAR(100) NULL")
+                add_col_if_missing("users", "phone", "VARCHAR(20) NULL")
+                add_col_if_missing("users", "avatar_url", "VARCHAR(500) NULL")
+
+                conn.commit()
     except Exception as err:
-        pass
+        print(f"[SCHEMA MIGRATION WARNING] {err}")
 
 engine, SessionLocal = init_engine_and_session()
 auto_migrate_schema(engine)
